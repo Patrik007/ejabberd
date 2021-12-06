@@ -1,0 +1,13 @@
+{application, elenty,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lager
+                 ]},
+  {mod, { elenty_app, []}},
+  {env, []}
+ ]}.
