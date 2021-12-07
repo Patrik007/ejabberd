@@ -24,7 +24,8 @@
 	 expire                :: erlang:timestamp() | never | undefined | '_',
 	 from = #jid{}         :: jid() | '_',
 	 to = #jid{}           :: jid() | '_',
-	 packet = #xmlel{}     :: xmlel() | message() | '_'}).
+	 packet = #xmlel{}     :: xmlel() | message() | '_',
+	 messageid  		   :: binary() | undefined | '_'}).
 
 -record(state,
 	{host = <<"">> :: binary(),

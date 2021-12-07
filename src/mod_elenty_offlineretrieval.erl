@@ -47,7 +47,7 @@ offline_msg_schema() ->
     {record_info(fields, offline_msg), #offline_msg{}}.
 
 offline_msg_to_route(LServer, #offline_msg{} = R) ->
-    ?DEBUG("Offline message=~p", [R#offline_msg.timestamp]),
+    ?DEBUG("Offline message messageID=~p", [R#offline_msg.messageid]),
     %% ?DEBUG("Offline message timestamp=~p", [R#offline_msg.timestamp]),
     El = case R#offline_msg.timestamp of
 	     undefined ->

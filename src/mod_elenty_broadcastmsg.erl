@@ -86,9 +86,9 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
                    end,
             RecipientCSV = fxml:get_subtag_cdata(SubEl, <<"recipients">>),
             Recipients = string:tokens(erlang:binary_to_list(RecipientCSV), ","),
-            messageID = fxml:get_subtag_cdata(SubEl, <<"msgid">>),
+            MessageID = fxml:get_subtag_cdata(SubEl, <<"msgid">>),
             Message = #xmlel{name= <<"message">>,
-                             attrs= [{<<"type">>, MsgType}, {<<"id">>, messageID}],
+                             attrs= [{<<"type">>, MsgType}, {<<"id">>, MessageID}],
                              children= Children},
             lists:foreach(fun (RecipientName) ->
                                   RecipientJID = lists:concat([RecipientName, "@xmpp.elenty.com"]),

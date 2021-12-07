@@ -66,4 +66,3 @@ use_mam_for_storage(Opts) when is_map(Opts) ->
     gen_mod:get_opt(use_mam_for_storage, Opts);
 use_mam_for_storage(Host) ->
     gen_mod:get_module_opt(Host, mod_offline, use_mam_for_storage).
-

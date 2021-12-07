@@ -14,6 +14,7 @@
 
 -include("logger.hrl").
 -include_lib("../deps/xmpp/include/xmpp.hrl").
+-include("mod_offline.hrl").
 
 -export([start/2, stop/1, mod_options/1, depends/2, decode_iq_subel/1, process_local_iq/1]).
 
@@ -73,7 +74,12 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
             ?DEBUG("Recipients: ~p", [Recipients]),
 
             IDsCSV = fxml:get_subtag_cdata(SubEl, <<"ids">>),
-            ?DEBUG("~p", [IDsCSV]),
+            MessageIds = string:tokens(erlang:binary_to_list(IDsCSV), ","),
+
+            lists:foreach(fun (MessageId) ->
+                Result = delete_message(erlang:list_to_binary(MessageId)),
+                ?DEBUG("Message removed=~p", [Result])
+            end, MessageIds),
 
             ListOfIOSTokens = lists:filtermap(fun(RecipientName) ->
                 RecipientJID = lists:concat([RecipientName, "@xmpp.elenty.com"]),
@@ -120,4 +126,16 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
             end,
             ?DEBUG("End of process_local_iq", []),
             xmpp:make_iq_result(IQ)
+    end.
+
+delete_message(MessageId) ->
+    case mnesia:dirty_match_object(offline_msg, #offline_msg{ _ = '_', messageid = MessageId}) of
+        [] ->
+            not_found;
+        Msgs ->
+            lists:foreach(
+                fun(Msg) ->
+                mnesia:dirty_delete_object(Msg)
+            end, Msgs),
+            ok
     end.

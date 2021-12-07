@@ -487,7 +487,7 @@ need_to_store(LServer, #message{type = Type} = Packet) ->
     end.
 
 -spec store_packet({any(), message()}) -> {any(), message()}.
-store_packet({_Action, #message{from = From, to = To} = Packet} = Acc) ->
+store_packet({_Action, #message{from = From, to = To, id = MessageID} = Packet} = Acc) ->
     case need_to_store(To#jid.lserver, Packet) of
 	true ->
 	    case check_event(Packet) of
@@ -500,7 +500,9 @@ store_packet({_Action, #message{from = From, to = To} = Packet} = Acc) ->
 					  expire = Expire,
 					  from = From,
 					  to = To,
-					  packet = Packet},
+					  packet = Packet,
+					  messageid = MessageID},
+			?DEBUG("Store message to offline= ~p", [OffMsg]),
 		    case store_offline_msg(OffMsg) of
 			ok ->
 			    {offlined, Packet};
