@@ -92,7 +92,7 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
                     not_found -> false;
                     _ ->
                         case GCMType of
-                            apn -> {true, Token};
+                            apns -> {true, Token};
                             _ ->
                                 false
                         end

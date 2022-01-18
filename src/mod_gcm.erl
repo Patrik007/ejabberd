@@ -165,14 +165,37 @@ message({_Action, #message{from = From, to = To} = Pkt} = Acc) ->
                 <<>> -> ok; %% There is no body
                 _ ->
                     {Token, GCMType} = get_gcm_token(ToUser, ToServer, mnesia), %%  {<<"123123">>, apns}, %%
+                    ?DEBUG("Found FCM for user= ~p", [ToUser]),
                     ?DEBUG("Found Key: ~p", [Token]),
+                    ?DEBUG("Found GCMType: ~p", [GCMType]),
                     case Token of
                         not_found ->
                             ok;
                         _ ->
-                            Payload = get_payload(Token, GCMType, Body, Data, JTo, JFrom, MessageId, MessageTimestamp),
-                            mod_fcm:send(ToServer, Payload)
-                            %% send(Payload, ServerKey)
+                            case GCMType of
+                                apns ->
+                                    JToStringList = string:tokens(erlang:binary_to_list(JTo), "-"),
+                                    JFromStringList = string:tokens(erlang:binary_to_list(JFrom), "-"),
+
+                                    UserIdTo = lists:nth(1, JToStringList),
+                                    UserIdFrom = lists:nth(1, JFromStringList),
+
+                                    if
+                                        UserIdTo == UserIdFrom ->
+                                            %% prevent messages from being sent to my devices
+                                            ok;
+                                        true ->
+                                        Payload = get_payload(Token, apns, Body, Data, JTo, JFrom, MessageId, MessageTimestamp),
+                                        mod_fcm:send(ToServer, Payload)
+                                    end,
+                                    ok;
+                                gcm ->
+                                    Payload = get_payload(Token, gcm, Body, Data, JTo, JFrom, MessageId, MessageTimestamp),
+                                    mod_fcm:send(ToServer, Payload),
+                                    ok;
+                                _ ->
+                                    ok
+                            end
                     end
             end
     end,
@@ -182,45 +205,48 @@ get_payload(Token, Type, Body, Data, JTo, JFrom, MessageId, MessageTimestamp) ->
     case Type of
         gcm ->
             {[
-              {to, Token},
+              {token, Token},
               {data,
                {[
-                 {json, Data}
+                 {json, Data},
+                 {messageTimestamp, MessageTimestamp},
+                 {messageId, MessageId},
+                 {fromJid, JFrom},
+                 {toJid, JTo}
                 ]}
-              },
-              {priority, high},
-              {content_available, true},
-              {to_jid, JTo},
-              {from_jid, JFrom}
+              }
+             ]};
+        apns ->
+            {[
+              {token, Token},
+              {apns, {[
+                {headers, {[
+                    {<<"apns-collapse-id">>, MessageId}
+                ]}},
+                {payload, {[
+                    {aps, {[
+                        {<<"mutable-content">>, true}
+                    ]}}
+                ]}}
+              ]}},
+              {notification, {[
+                {title, <<"title defined by messaging service">>},
+                {body, <<"body defined by messaging service">>}
+               ]}},
+              {data,
+               {[
+                 {mutable_content, <<"1">>},
+                 {json, Data},
+                 {messageTimestamp, MessageTimestamp},
+                 {messageId, MessageId},
+                 {fromJid, JFrom},
+                 {toJid, JTo}
+                ]}
+              }
              ]};
         _ ->
-        {[
-          {token, Token},
-          {apns, {[
-            {headers, {[
-                {<<"apns-collapse-id">>, MessageId}
-            ]}},
-            {payload, {[
-                {aps, {[
-                    {<<"mutable-content">>, true}
-                ]}}
-            ]}}
-          ]}},
-          {notification, {[
-            {title, <<"title defined by messaging service">>},
-            {body, <<"body defined by messaging service">>}
-           ]}},
-          {data,
-           {[
-             {mutable_content, <<"1">>},
-             {json, Data},
-             {messageTimestamp, MessageTimestamp},
-             {messageId, MessageId},
-             {fromJid, JFrom},
-             {toJid, JTo}
-            ]}
-          }
-         ]}
+            {}
+
 end.
 
 store_gcm_token(User, Server, Token, Timestamp, Type, mnesia) ->
@@ -244,11 +270,11 @@ iq(#iq{from = #jid{luser = LUser, lserver = LServer, resource = FromRes}, type =
   ResStr = erlang:binary_to_list(FromRes),
   Type = case string:str(ResStr, "android") of
                0 ->
-                   apn;
+                   apns;
                _ ->
                    gcm
            end,
-  ?DEBUG("Processing gcm key... 5", []),
+  ?DEBUG("Processing gcm key... 5... user=~p, token=~p, Timestamp=~p, Type=~p", [LUser, Token, Timestamp, Type]),
   store_gcm_token(LUser, LServer, Token, Timestamp, Type, mnesia),
   xmpp:make_iq_result(IQ).
 

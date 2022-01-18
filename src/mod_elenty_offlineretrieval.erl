@@ -49,6 +49,17 @@ offline_msg_schema() ->
 offline_msg_to_route(LServer, #offline_msg{} = R) ->
     ?DEBUG("Offline message messageID=~p", [R#offline_msg.messageid]),
     %% ?DEBUG("Offline message timestamp=~p", [R#offline_msg.timestamp]),
+    X = case R#offline_msg.messageid of
+        undefined ->
+            ?DEBUG("Packet corrupted= ~p", [R#offline_msg.packet]),
+            ?DEBUG("From= ~p ", [R#offline_msg.from]),
+            ?DEBUG("To= ~p ", [R#offline_msg.to]),
+            ?DEBUG("TimeStamp= ~p ", [R#offline_msg.timestamp]),
+            ?DEBUG("US= ~p ", [R#offline_msg.us]),
+            undefined;
+        _ ->
+            ok
+    end,
     El = case R#offline_msg.timestamp of
 	     undefined ->
                  R#offline_msg.packet;
@@ -71,7 +82,7 @@ offline_msg_to_route(LServer, #offline_msg{} = R) ->
 pop_offline_messages(LUser, LServer, MsgLimit) ->
     %% Result = mnesia:dirty_index_read(offline_msg, {LUser, LServer}, <<"us">>),
     Result = mnesia:dirty_read(offline_msg, {LUser, LServer}),
-    ?DEBUG("Count messages=~p", [length(Result)]),
+    ?DEBUG("Count messages=~p, user=~p", [length(Result), {LUser, LServer}]),
     case catch Result of
         [] ->
             {ok, []};
@@ -174,6 +185,7 @@ process_local_iq(#iq{from = #jid{luser=FromUser, lserver=Server},
                                list_to_integer(binary_to_list(Limit))
                        end,
             {ok, OfflineMsgs} = pop_offline_messages(FromUser, Server, MsgLimit),
+
             Packets = lists:map(fun (R) ->
                                    offline_msg_to_route(Server, R)
                            end, OfflineMsgs),

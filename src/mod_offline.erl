@@ -503,6 +503,10 @@ store_packet({_Action, #message{from = From, to = To, id = MessageID} = Packet} 
 					  packet = Packet,
 					  messageid = MessageID},
 			?DEBUG("Store message to offline= ~p", [OffMsg]),
+			case MessageID of
+				undefined ->
+				?DEBUG("Store Message without messageid =~p", [OffMsg])
+			end,
 		    case store_offline_msg(OffMsg) of
 			ok ->
 			    {offlined, Packet};

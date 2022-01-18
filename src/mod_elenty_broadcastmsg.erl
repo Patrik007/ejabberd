@@ -90,6 +90,7 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
             Message = #xmlel{name= <<"message">>,
                              attrs= [{<<"type">>, MsgType}, {<<"id">>, MessageID}],
                              children= Children},
+            ?DEBUG("Broadcast message=~p", [Message]),
             lists:foreach(fun (RecipientName) ->
                                   RecipientJID = lists:concat([RecipientName, "@xmpp.elenty.com"]),
                                   ToJID = jid:decode(erlang:list_to_binary(RecipientJID)),
