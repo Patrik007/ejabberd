@@ -82,16 +82,35 @@ offline_msg_to_route(LServer, #offline_msg{} = R) ->
 pop_offline_messages(LUser, LServer, MsgLimit) ->
     %% Result = mnesia:dirty_index_read(offline_msg, {LUser, LServer}, <<"us">>),
     Result = mnesia:dirty_read(offline_msg, {LUser, LServer}),
-    ?DEBUG("Count messages=~p, user=~p", [length(Result), {LUser, LServer}]),
-    case catch Result of
+
+    FilterOkMessages = lists:filter(fun(#offline_msg{} = R) ->
+        case R#offline_msg.messageid of
+            undefined ->
+                false;
+            _ ->
+                true
+        end
+    end, Result),
+
+    FilterNotOkMessages = lists:filter(fun(#offline_msg{} = R) ->
+        case R#offline_msg.messageid of
+            undefined ->
+                true;
+            _ ->
+                false
+        end
+    end, Result),
+
+    ?DEBUG("Count messages=~p, user=~p", [length(FilterOkMessages), {LUser, LServer}]),
+    case catch FilterOkMessages of
         [] ->
             {ok, []};
         _ ->
-        ?DEBUG("Pop Msgs: ~p, ~p", [MsgLimit, Result]),
-        SortedRs = lists:keysort(#offline_msg.timestamp, Result),
+        ?DEBUG("Pop Msgs: ~p, ~p", [MsgLimit, FilterOkMessages]),
+        SortedRs = lists:keysort(#offline_msg.timestamp, FilterOkMessages),
         Rs = case MsgLimit of
                         -1 ->
-                            Result;
+                            FilterOkMessages;
                         Limit ->
                             lists:sublist(SortedRs, Limit)
              end,
