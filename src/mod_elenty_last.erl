@@ -32,11 +32,24 @@
 -behaviour(gen_mod).
 
 
--export([start/2, stop/1, reload/3, process_local_iq/1, export/1,
-	 process_sm_iq/1, on_presence_update/4, import_info/0,
-	 import/5, import_start/2, store_last_info/4, get_last_info/2,
-	 remove_user/2, mod_opt_type/1, mod_options/1,
-	 register_user/2, depends/2]).
+-export([
+	start/2,
+	stop/1,
+	reload/3,
+	process_local_iq/1,
+	export/1,
+	process_sm_iq/1,
+	on_presence_update/4,
+	import_info/0,
+	import/5,
+	import_start/2,
+	store_last_info/4,
+	get_last_info/2,
+	remove_user/2,
+	mod_opt_type/1,
+	mod_options/1,
+	register_user/2,
+	depends/2]).
 
 -include("logger.hrl").
 
@@ -76,9 +89,7 @@
         ?STANZA_ERRORT("500", "wait",   "internal-server-error", Lang, Text)).
 
 start(Host, Opts) ->
-    %% Mod = gen_mod:db_mod(Host, Opts, ?MODULE), // from 18.06 to 21.04
-	Mod = gen_mod:db_mod(Host, ?MODULE),
-	?DEBUG("~p", [Mod]),
+    Mod = gen_mod:db_mod(Opts, ?MODULE),
     Mod:init(Host, Opts),
     ?WARNING_MSG("Mod_elenty_last starting!", []),
     gen_iq_handler:add_iq_handler(ejabberd_local, Host,
@@ -105,8 +116,8 @@ stop(Host) ->
 				     ?NS_LAST).
 
 reload(Host, NewOpts, OldOpts) ->
-    NewMod = gen_mod:db_mod(Host, NewOpts, ?MODULE),
-    OldMod = gen_mod:db_mod(Host, OldOpts, ?MODULE),
+    NewMod = gen_mod:db_mod(NewOpts, ?MODULE),
+    OldMod = gen_mod:db_mod(OldOpts, ?MODULE),
     if NewMod /= OldMod ->
 	    NewMod:init(Host, NewOpts);
        true ->
@@ -347,7 +358,7 @@ export(LServer) ->
 depends(_Host, _Opts) ->
     [].
 
-mod_opt_type(db_type) -> fun(T) -> ejabberd_config:v_db(mod_last, T) end;
+mod_opt_type(db_type) -> econf:db_type(?MODULE);
 mod_opt_type(O) when O == cache_life_time; O == cache_size ->
     fun (I) when is_integer(I), I > 0 -> I;
         (infinity) -> infinity
@@ -356,13 +367,7 @@ mod_opt_type(O) when O == use_cache; O == cache_missed ->
     fun (B) when is_boolean(B) -> B end.
 
 mod_options(Host) ->
-    %% [{db_type, ejabberd_config:default_db(Host, mod_last)},
-    %% {use_cache, ejabberd_config:use_cache(Host)},
-    %% {cache_size, ejabberd_config:cache_size(Host)},
-    %% {cache_missed, ejabberd_config:cache_missed(Host)},
-    %% {cache_life_time, ejabberd_config:cache_life_time(Host)}].
-
-	[{db_type, ejabberd_config:default_db(Host, mod_last)},
+	[{db_type, ejabberd_config:default_db(Host, ?MODULE)},
 	{use_cache, ejabberd_config:get_option({use_cache, Host})},
     {cache_size, ejabberd_config:get_option({cache_size, Host})},
     {cache_missed, ejabberd_config:get_option({cache_missed, Host})},

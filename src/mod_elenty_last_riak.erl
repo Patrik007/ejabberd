@@ -7,7 +7,8 @@
 %%% Created : 13 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%%-------------------------------------------------------------------
 -module(mod_elenty_last_riak).
--behaviour(mod_last).
+
+-behaviour(mod_elenty_last).
 
 %% API
 -export([init/2, import/2, get_last/2, store_last_info/4, remove_user/2]).

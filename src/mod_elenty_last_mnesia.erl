@@ -23,8 +23,7 @@
 %%%----------------------------------------------------------------------
 
 -module(mod_elenty_last_mnesia).
-
--behaviour(mod_last).
+-behaviour(mod_elenty_last).
 
 %% API
 -export([init/2, import/2, get_last/2, store_last_info/4,
@@ -38,6 +37,7 @@
 %%% API
 %%%===================================================================
 init(_Host, _Opts) ->
+	?DEBUG("mod_elenty_last_mnesia init", []),
     ejabberd_mnesia:create(?MODULE, last_activity,
 			   [{disc_only_copies, [node()]},
 			    {attributes, record_info(fields, last_activity)}]).
@@ -45,7 +45,7 @@ init(_Host, _Opts) ->
 use_cache(Host) ->
     case mnesia:table_info(last_activity, storage_type) of
 	disc_only_copies ->
-	    gen_mod:get_module_opt(Host, mod_last, use_cache);
+	    gen_mod:get_module_opt(Host, mod_elenty_last, use_cache);
 	_ ->
 	    false
     end.
