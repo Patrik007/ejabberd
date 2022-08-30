@@ -13,8 +13,8 @@ log_rotate_count: 100
 registration_timeout: infinity
 
 sql_type: mysql
-sql_server: "194.99.21.145"
-sql_port: 3306 # the default
+sql_server: "localhost"
+sql_port: 3306
 sql_database: "ejabberd"
 sql_username: "ejabberd"
 sql_password: "password"
