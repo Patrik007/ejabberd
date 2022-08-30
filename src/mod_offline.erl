@@ -213,12 +213,19 @@ flush_cache(Mod, User, Server) ->
 store_offline_msg(#offline_msg{us = {User, Server}, packet = Pkt} = Msg) ->
     UseMam = use_mam_for_user(User, Server),
     Mod = gen_mod:db_mod(Server, ?MODULE),
+	%% case Pkt of
+	%% undefined ->
+		%% {error, packet_undefined}
+	%% end
     case UseMam andalso xmpp:get_meta(Pkt, mam_archived, false) of
 	true ->
+		?DEBUG("store_offline_msg UseMam andalso xmpp:get_meta(..)", []),
 	    case count_offline_messages(User, Server) of
 		0 ->
+			?DEBUG("store_offline_msg 0", []),
 		    store_message_in_db(Mod, Msg);
 		_ ->
+			?DEBUG("store_offline_msg _", []),
 		    case use_cache(Mod, Server) of
 			true ->
 			    ets_cache:incr(
@@ -232,9 +239,11 @@ store_offline_msg(#offline_msg{us = {User, Server}, packet = Pkt} = Msg) ->
 	false ->
 	    case get_max_user_messages(User, Server) of
 		infinity ->
+			?DEBUG("store_offline_msg infinity", []),
 		    store_message_in_db(Mod, Msg);
 		Limit ->
 		    Num = count_offline_messages(User, Server),
+			?DEBUG("store_offline_msg limit~p current=~p", [Limit, Num]),
 		    if Num < Limit ->
 			    store_message_in_db(Mod, Msg);
 		       true ->
@@ -366,6 +375,7 @@ handle_offline_query(#iq{lang = Lang} = IQ) ->
 
 -spec handle_offline_items_view(jid(), [offline_item()]) -> boolean().
 handle_offline_items_view(JID, Items) ->
+	?DEBUG("jid=~p", [JID]),
     {U, S, R} = jid:tolower(JID),
     case use_mam_for_user(U, S) of
 	true ->
@@ -375,6 +385,7 @@ handle_offline_items_view(JID, Items) ->
 		fun(#offline_item{node = Node, action = view}, Acc) ->
 		    case fetch_msg_by_node(JID, Node) of
 			{ok, OfflineMsg} ->
+				?DEBUG("offlineMsg = ~p", [OfflineMsg]),
 			    case offline_msg_to_route(S, OfflineMsg) of
 				{route, El} ->
 				    NewEl = set_offline_tag(El, Node),
@@ -500,17 +511,14 @@ store_packet({_Action, #message{from = From, to = To, id = MessageID} = Packet} 
 					  expire = Expire,
 					  from = From,
 					  to = To,
-					  packet = Packet,
-					  messageid = MessageID},
+					  packet = Packet},
+					  %%messageid = MessageID},
 			?DEBUG("Store message to offline= ~p", [OffMsg]),
-			case MessageID of
-				undefined ->
-				?DEBUG("Store Message without messageid =~p", [OffMsg])
-			end,
 		    case store_offline_msg(OffMsg) of
 			ok ->
 			    {offlined, Packet};
 			{error, Reason} ->
+				?DEBUG("ERROR Storing message ~p", [Reason]),
 			    discard_warn_sender(Packet, Reason),
 			    stop
 		    end;
@@ -755,8 +763,10 @@ get_offline_els(LUser, LServer) ->
 				  {route, message()} | error.
 offline_msg_to_route(LServer, #offline_msg{from = From, to = To} = R) ->
     CodecOpts = ejabberd_config:codec_options(),
+	?DEBUG("offline msg ~p", [R#offline_msg.packet]),
     try xmpp:decode(R#offline_msg.packet, ?NS_CLIENT, CodecOpts) of
 	Pkt ->
+		?DEBUG("Pkt=~p From=~p To=~p", [Pkt, From, To]),
 	    Pkt1 = xmpp:set_from_to(Pkt, From, To),
 	    Pkt2 = add_delay_info(Pkt1, LServer, R#offline_msg.timestamp),
 	    {route, Pkt2}

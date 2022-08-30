@@ -5,6 +5,7 @@
 -export([start/2,
          stop/1,
          depends/2,
+         mod_opt_type/1,
          mod_options/1,
          clear_messages/2,
          decode_iq_subel/1,
@@ -17,11 +18,11 @@
 -include("mod_offline.hrl").
 
 -define(NS_ELENTY_BROADCAST, <<"elenty:offlineretrieval">>).
+-define(MODULE_MOD_OFFLINE, mod_offline).
 
 start(Host, Opts) ->
-    %% IQDisc = gen_mod:get_opt(iqdisc, Opts,
-        %%                     fun gen_iq_handler:check_type/1,
-        %%                     one_queue),
+    Mod = gen_mod:db_mod(Opts, ?MODULE_MOD_OFFLINE),
+    Mod:init(Host, Opts),
     gen_iq_handler:add_iq_handler(ejabberd_sm, Host,
                                   ?NS_ELENTY_BROADCAST, ?MODULE, process_local_iq),
     ok.
@@ -33,8 +34,11 @@ stop(Host) ->
 depends(_Host, _Opts) ->
 [].
 
-mod_options(_Host) ->
-[].
+mod_opt_type(db_type) ->
+    econf:db_type(?MODULE_MOD_OFFLINE).
+
+mod_options(Host) ->
+    [{db_type, ejabberd_config:default_db(Host, ?MODULE_MOD_OFFLINE)}].
 
 -spec decode_iq_subel(xmpp_element() | xmlel()) -> xmpp_element() | xmlel().
 %% Tell gen_iq_handler not to auto-decode IQ payload
@@ -80,77 +84,30 @@ offline_msg_to_route(LServer, #offline_msg{} = R) ->
     El.
 
 pop_offline_messages(LUser, LServer, MsgLimit) ->
-    %% Result = mnesia:dirty_index_read(offline_msg, {LUser, LServer}, <<"us">>),
-    Result = mnesia:dirty_read(offline_msg, {LUser, LServer}),
+    Mod = gen_mod:db_mod(LServer, ?MODULE_MOD_OFFLINE),
+    OfflineMessages = case Mod:pop_messages(LUser, LServer) of
+        {ok, OffMsgs} ->
+            OffMsgs;
+        _ ->
+        []
+    end,
 
-    FilterOkMessages = lists:filter(fun(#offline_msg{} = R) ->
-        case R#offline_msg.messageid of
-            undefined ->
-                false;
-            _ ->
-                true
-        end
-    end, Result),
+    ?DEBUG("Count messages=~p, user=~p", [length(OfflineMessages), {LUser, LServer}]),
 
-    FilterNotOkMessages = lists:filter(fun(#offline_msg{} = R) ->
-        case R#offline_msg.messageid of
-            undefined ->
-                true;
-            _ ->
-                false
-        end
-    end, Result),
-
-    ?DEBUG("Count messages=~p, user=~p", [length(FilterOkMessages), {LUser, LServer}]),
-    case catch FilterOkMessages of
+    case catch OfflineMessages of
         [] ->
             {ok, []};
         _ ->
-        ?DEBUG("Pop Msgs: ~p, ~p", [MsgLimit, FilterOkMessages]),
-        SortedRs = lists:keysort(#offline_msg.timestamp, FilterOkMessages),
-        Rs = case MsgLimit of
-                        -1 ->
-                            FilterOkMessages;
-                        Limit ->
-                            lists:sublist(SortedRs, Limit)
-             end,
-        ?DEBUG("Limited Rs: ~p", [Rs]),
-        {ok, lists:reverse(Rs)}
+            SortedRs = lists:keysort(#offline_msg.timestamp, OfflineMessages),
+            Rs = case MsgLimit of
+                -1 ->
+                    OfflineMessages;
+                Limit ->
+                    lists:sublist(SortedRs, Limit)
+    end,
+    ?DEBUG("Limited Rs: ~p", [Rs]),
+    {ok, lists:reverse(Rs)}
 end.
-
-    %% case ejabberd_riak:get_by_index(offline_msg, offline_msg_schema(), <<"us">>, {LUser, LServer}) of
-        %%{ok, AllRs} ->
-        %%?DEBUG("Pop Msgs: ~p, ~p", [MsgLimit, AllRs]),
-            %%SortedRs = lists:keysort(#offline_msg.timestamp, AllRs),
-            %%Rs = case MsgLimit of
-        %%                    -1 ->
-            %%                    AllRs;
-            %%                Limit ->
-            %%                    lists:sublist(SortedRs, Limit)
-            %%     end,
-            %%?DEBUG("Limited Rs: ~p", [Rs]),
-            %%try
-                %% We used to delete the messages here, that is now
-                %% moved to the "set" iq in this module
-            %%    {ok, lists:reverse(Rs)}
-            %%catch _:{badmatch, Err} ->
-            %%        Err
-            %%end;
-        %%Err ->
-            %%Err
-    %%end.
-
-clear_messages(User, Server) ->
-    {ok, OfflineMsgs} = pop_offline_messages(User, Server, -1),
-    ?DEBUG("Clearing ~p messages for ~p", [length(OfflineMsgs), User]),
-    lists:foreach(
-      fun(Msg) ->
-              Ts = Msg#offline_msg.timestamp,
-              ok = mnesia:dirty_delete(offline_msg, Ts)
-              %% ok = ejabberd_riak:delete(offline_msg, Ts)
-      end, OfflineMsgs),
-    ok.
-
 
 process_local_iq(#iq{from = #jid{luser=FromUser, lserver=Server},
                      type = Type, sub_els = [SubEl]} = IQ) ->

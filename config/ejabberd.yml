@@ -12,6 +12,14 @@ log_rotate_count: 100
 
 registration_timeout: infinity
 
+sql_type: mysql
+sql_server: "194.99.21.145"
+sql_port: 3306 # the default
+sql_database: "ejabberd"
+sql_username: "ejabberd"
+sql_password: "password"
+sql_pool_size: 5
+
 listen:
   - port: 13340
     module: ejabberd_http
@@ -119,7 +127,7 @@ modules:
   # mod_carboncopy: {}
   # mod_client_state: {}
   # mod_configure: {}
-  # mod_disco: {}
+  mod_disco: {}
   # mod_fail2ban: {}
   # mod_http_api: {}
   # mod_http_upload:
@@ -188,10 +196,11 @@ modules:
   ### mode: yaml
   ### End:
   ### vim: set filetype=yaml tabstop=8
-  mod_elenty_offlineretrieval: {}
+  # mod_elenty_offlineretrieval: {}
   mod_offline:
     access_max_user_messages: max_user_offline_messages
-    db_type: mnesia
+    use_cache: false
+    db_type: sql
   mod_roster: {}
   # mod_elenty_ping: {}
     # send_pings: true
@@ -207,8 +216,8 @@ modules:
   mod_elenty_broadcastmsg: {}
   mod_elenty_registration_api: {}
   mod_stream_mgmt:
-    resend_on_timeout: false
-    resume_timeout: 0
+    resend_on_timeout: true
+    resume_timeout: 15
   mod_gcm: {}
   #   gcm_api_key: "AAAAyfo-2BU:APA91bH-62f112PSR8demaqk9oUD-P5K4NRXkddhku3QzunDgunQQ9GX4_IeSTume1PKOBTHVV4XrlgWnovrbi2Gz7HmhIU_2A1ZxohpC9AokAHK34yeI3lvFEsZKpwlF3i_dy1pwscX"
   mod_elenty_delete_messages: {}
