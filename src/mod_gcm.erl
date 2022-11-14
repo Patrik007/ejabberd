@@ -179,10 +179,11 @@ message({_Action, #message{from = From, to = To} = Pkt} = Acc) ->
 
                                     UserIdTo = lists:nth(1, JToStringList),
                                     UserIdFrom = lists:nth(1, JFromStringList),
-
+                                    ?DEBUG("From=~p, to=~p", [UserIdFrom, UserIdTo]),
                                     if
                                         UserIdTo == UserIdFrom ->
                                             %% prevent messages from being sent to my devices
+                                            ?DEBUG("prevent message send to my device", []),
                                             ok;
                                         true ->
                                         Payload = get_payload(Token, apns, Body, Data, JTo, JFrom, MessageId, MessageTimestamp),

@@ -49,6 +49,7 @@
 	 remove_expired_messages/1,
 	 remove_old_messages/2,
 	 remove_user/2,
+	 remove_message_by_message_id/3,
 	 import_info/0,
 	 import_start/2,
 	 import/5,
@@ -96,6 +97,7 @@
 -callback remove_expired_messages(binary()) -> {atomic, any()}.
 -callback remove_old_messages(non_neg_integer(), binary()) -> {atomic, any()}.
 -callback remove_user(binary(), binary()) -> any().
+-callback remove_message_by_message_id(binary(), binary(), binary()) -> any().
 -callback read_message_headers(binary(), binary()) ->
     [{non_neg_integer(), jid(), jid(), undefined | erlang:timestamp(), xmlel()}] | error.
 -callback read_message(binary(), binary(), non_neg_integer()) ->
@@ -511,8 +513,8 @@ store_packet({_Action, #message{from = From, to = To, id = MessageID} = Packet} 
 					  expire = Expire,
 					  from = From,
 					  to = To,
-					  packet = Packet},
-					  %%messageid = MessageID},
+					  packet = Packet,
+					  messageid = MessageID},
 			?DEBUG("Store message to offline= ~p", [OffMsg]),
 		    case store_offline_msg(OffMsg) of
 			ok ->
@@ -709,6 +711,19 @@ remove_user(User, Server) ->
     Mod = gen_mod:db_mod(LServer, ?MODULE),
     Mod:remove_user(LUser, LServer),
     flush_cache(Mod, LUser, LServer).
+
+-spec remove_message_by_message_id(binary(), binary(), binary()) -> ok.
+remove_message_by_message_id(User, Server, MessageId) ->
+	Mod = gen_mod:db_mod(Server, ?MODULE),
+	case erlang:function_exported(Mod, remove_message_by_message_id, 3) of
+	true ->
+	    Ret = Mod:remove_message_by_message_id(User, Server, MessageId),
+	    ets_cache:clear(?SPOOL_COUNTER_CACHE),
+	    Ret;
+	false ->
+	    erlang:error(not_implemented)
+    end.
+
 
 %% Helper functions:
 

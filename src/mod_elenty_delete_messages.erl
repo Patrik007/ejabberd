@@ -75,9 +75,13 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
 
             IDsCSV = fxml:get_subtag_cdata(SubEl, <<"ids">>),
             MessageIds = string:tokens(erlang:binary_to_list(IDsCSV), ","),
+            %% From = jid:decode(_FromJID),
+            LServer = _FromJID#jid.server,
+            LUser = _FromJID#jid.user,
 
             lists:foreach(fun (MessageId) ->
-                Result = delete_message(erlang:list_to_binary(MessageId)),
+                %% Result = delete_message(erlang:list_to_binary(MessageId)),
+                Result = mod_offline:remove_message_by_message_id(LUser, LServer, list_to_binary(MessageId)),
                 ?DEBUG("Message removed=~p", [Result])
             end, MessageIds),
 

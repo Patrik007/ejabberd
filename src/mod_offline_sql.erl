@@ -30,7 +30,7 @@
 -export([init/2, store_message/1, pop_messages/2, remove_expired_messages/1,
 	 remove_old_messages/2, remove_user/2, read_message_headers/2,
 	 read_message/3, remove_message/3, read_all_messages/2,
-	 remove_all_messages/2, count_messages/2, import/1, export/1]).
+	 remove_all_messages/2, count_messages/2, remove_message_by_message_id/3, import/1, export/1]).
 
 -include_lib("xmpp/include/xmpp.hrl").
 -include("mod_offline.hrl").
@@ -53,11 +53,13 @@ store_message(#offline_msg{us = {LUser, LServer}} = M) ->
 		  <<"Offline Storage">>),
     XML = fxml:element_to_binary(
 	    xmpp:encode(NewPacket)),
+	MessageId = M#offline_msg.messageid,
     case ejabberd_sql:sql_query(
 	   LServer,
            ?SQL_INSERT(
               "spool",
-              ["username=%(LUser)s",
+              ["message_id=%(MessageId)s",
+			   "username=%(LUser)s",
                "server_host=%(LServer)s",
                "xml=%(XML)s"])) of
 	{updated, _} ->
@@ -155,6 +157,13 @@ read_message(LUser, LServer, Seq) ->
 	_ ->
 	    error
     end.
+
+remove_message_by_message_id(LUser, LServer, MessageId) ->
+	ejabberd_sql:sql_query(
+		LServer,
+		?SQL("delete from spool where message_id=%(MessageId)s")
+	),
+	ok.
 
 remove_message(LUser, LServer, Seq) ->
     ejabberd_sql:sql_query(
