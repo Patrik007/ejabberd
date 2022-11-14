@@ -67,6 +67,7 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
             Data = fxml:get_subtag(SubEl, <<"data">>),
             Data1 = fxml:get_subtag(SubEl, <<"data1">>),
             MsgId = fxml:get_subtag(SubEl, <<"msgid">>),
+            ServerTimestamp = mod_elenty_servertimestamp:get_servertimestamp_elm(),
             Children = lists:filter(fun (F) ->
                                             case F of
                                                 false ->
@@ -75,7 +76,7 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
                                                     true
                                             end
                                     end,
-                                    [Body, Data, Data1, MsgId]),
+                                    [Body, Data, Data1, MsgId, ServerTimestamp]),
             MsgType = case fxml:get_subtag_cdata(SubEl, <<"type">>) of
                           false ->
                               <<"chat">>;
@@ -90,6 +91,7 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
             Message = #xmlel{name= <<"message">>,
                              attrs= [{<<"type">>, MsgType}, {<<"id">>, MessageID}],
                              children= Children},
+
             ?DEBUG("Broadcast message=~p", [Message]),
             lists:foreach(fun (RecipientName) ->
                                   RecipientJID = lists:concat([RecipientName, "@xmpp.elenty.com"]),
@@ -101,5 +103,5 @@ process_local_iq(#iq{from = _FromJID, to = _ToJID, id = _ID, type = Type, sub_el
                                     DecodedMsg)
                           end,
                           Recipients),
-            xmpp:make_iq_result(IQ, mod_elenty_servertimestamp:get_servertimestamp_elm())
+            xmpp:make_iq_result(IQ, ServerTimestamp)
     end.
